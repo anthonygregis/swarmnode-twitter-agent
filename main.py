@@ -73,13 +73,22 @@ def refresh_user_access_token():
     print("Attempting to refresh user access token...")
 
     url = "https://api.twitter.com/2/oauth2/token"
+
+    # Form-encoded body includes only grant_type + refresh_token
     data = {
         "grant_type": "refresh_token",
         "refresh_token": REFRESH_TOKEN,
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET
     }
-    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+    # Authorization: Basic base64(client_id:client_secret)
+    auth_str = f"{CLIENT_ID}:{CLIENT_SECRET}"
+    b64_auth = base64.b64encode(auth_str.encode("utf-8")).decode("utf-8")
+
+    headers = {
+        "Authorization": f"Basic {b64_auth}",
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+
     resp = requests.post(url, data=data, headers=headers)
     if resp.status_code != 200:
         raise Exception(f"Failed to refresh access token: {resp.text}")
@@ -88,12 +97,11 @@ def refresh_user_access_token():
     if "access_token" not in token_response:
         raise Exception("No access_token in token response.")
 
-    # Update globals
     ACCESS_TOKEN = token_response["access_token"]
     if "refresh_token" in token_response:
         REFRESH_TOKEN = token_response["refresh_token"]
 
-    # Save new tokens back to file
+    # Save tokens to file, etc.
     save_tokens(ACCESS_TOKEN, REFRESH_TOKEN, CLIENT_ID, CLIENT_SECRET)
 
     print("User access token refreshed successfully!")
