@@ -162,7 +162,7 @@ def fetch_home_timeline(since_id=None, max_results=10):
 
     url = f"https://api.twitter.com/2/users/{USER_ID}/timelines/reverse_chronological"
     params = {
-        "tweet.fields": "author_id,created_at",
+        "tweet.fields": "author_id,created_at,conversation_id",
         "expansions": "author_id",
         "user.fields": "name,username",
         "max_results": max_results
@@ -174,11 +174,10 @@ def fetch_home_timeline(since_id=None, max_results=10):
     if "data" not in data:
         return [], {}
 
-    tweets_data = data["data"]  # list of tweets
+    tweets_data = data["data"]
     includes = data.get("includes", {})
     users_includes = includes.get("users", [])
 
-    # Build a dictionary: {user_id: user_object}
     users_map = {}
     for u in users_includes:
         users_map[u["id"]] = u
@@ -196,12 +195,16 @@ def handle_new_tweet(tweet_data, display_name):
 
     processed_tweet_ids.add(tweet_id)
     ogTweet = tweet_data["text"]
+    conv_id = tweet_data.get("conversation_id", tweet_id)
+
+    print(f"Conversation ID: {conv_id}")
 
     print(f"[handle_new_tweet] New Tweet by {display_name}: {ogTweet}")
     payload = {
         "type": "shouldReply",
         "ogTweet": ogTweet,
-        "ogAuthor": display_name
+        "ogAuthor": display_name,
+        "conversationId": conv_id
     }
     decision = execute_payload(payload)
     print(f"Decision: {decision}")
@@ -210,7 +213,8 @@ def handle_new_tweet(tweet_data, display_name):
         reply_payload = {
             "type": "reply",
             "ogTweet": ogTweet,
-            "ogAuthor": display_name
+            "ogAuthor": display_name,
+            "conversationId": conv_id
         }
         reply_content = execute_payload(reply_payload)
         print(f"Reply: {reply_content}")
@@ -295,9 +299,8 @@ def main_loop():
 
             # 2) Check if time to post random tweet
             now = time.time()
-            # If it's been at least a random interval (10-60 min) since last random tweet
-            # we can choose a new random interval each cycle or re-check
-            if (now - last_random_post_time) >= random.randint(600, 3600):
+            # Check if it's been at least a random interval (45 minutes to 2 hours) since the last random tweet
+            if (now - last_random_post_time) >= random.randint(2700, 7200):
                 post_random_tweet()
                 last_random_post_time = time.time()
 
@@ -305,7 +308,7 @@ def main_loop():
             print(f"Error in main loop: {e}")
 
         # Sleep 30s before next poll
-        time.sleep(30)
+        time.sleep(60)
 
 if __name__ == "__main__":
     # 1) Load tokens from file
