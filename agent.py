@@ -106,7 +106,7 @@ def main(request, store):
         thread_history_text = []
         for entry in thread_entries:
             role = entry["role"]
-            author = entry["author"]
+            author = entry.get("author", "CircuitMuse")
             content = entry["content"]
             # We'll just do a simple 1-line summary for each. 
             # Or you can add more logic to keep it short if the thread is long.
